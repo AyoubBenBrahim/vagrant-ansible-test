@@ -1,0 +1,61 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+$server_config = <<-SCRIPT
+
+sudo dnf makecache
+
+sudo dnf install python3
+
+sudo python3 -m pip install --upgrade pip
+pip3 install --upgrade setuptools
+
+pip3 install ansible
+
+# yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+# dnf install -y python3-pip && pip3 install --upgrade ansible==2.9.13
+
+SCRIPT
+
+VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+    config.vm.box = "generic/centos8"
+    config.vm.synced_folder ".", "/vagrant"
+
+    # config.vm.define "client1" do |cli|
+    #     cli.vm.hostname = "client1"
+    #     cli.vm.network "private_network", ip: "192.168.42.110"
+    #     cli.vm.provider :virtualbox do |v|
+    #         v.name = "client1"
+    #         v.memory = 1024
+    #         v.cpus = 1
+    #     end
+    # end
+
+
+    config.vm.define "ansibleServer" do |server|
+        server.vm.hostname = "ansibleServer"
+        server.vm.network "private_network", ip: "192.168.42.100"
+        server.vm.provider :virtualbox do |v|
+            v.name = "ansibleServer"
+            v.memory = 2000
+            v.cpus = 1
+        end
+
+        server.vm.provision "shell", inline: $server_config , privileged: false
+
+        server.vm.provision "ansible_local" do |ansible|
+            ansible.playbook = "provisioning/playbook.yaml"
+            ansible.inventory_path = "/vagrant/provisioning/inventory.yaml"
+            ansible.install = false
+            # ansible.install_mode = "pip3" # fixed
+            # ansible.version = "2.9.13" # fixed
+            # ansible.extra_vars = { ansible_python_interpreter:"/usr/bin/python3" }
+            # ansible.pip_install_cmd = "sudo dnf install -y python3-pip && sudo ln -s -f /usr/bin/pip3 /usr/bin/pip"
+            ansible.limit = "all"
+          end
+
+    end
+
+end
